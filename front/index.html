@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>简历智能匹配系统</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f7fa; color: #333; }
+    .container { max-width: 800px; margin: 40px auto; background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); padding: 30px; }
+    h1 { text-align: center; margin-bottom: 30px; color: #2c3e50; }
+    .section { margin-bottom: 25px; }
+    label { display: block; margin-bottom: 8px; font-weight: 600; color: #4a5568; }
+    input[type="file"] { width: 100%; padding: 12px; border: 2px dashed #cbd5e0; border-radius: 8px; font-size: 16px; }
+    textarea { width: 100%; padding: 12px; border: 2px solid #cbd5e0; border-radius: 8px; font-size: 16px; height: 120px; resize: vertical; }
+    input[type="file"]:hover, textarea:hover { border-color: #4299e1; }
+    button { background: #4299e1; color: white; border: none; padding: 12px 30px; border-radius: 8px; font-size: 16px; cursor: pointer; transition: background 0.3s; }
+    button:hover { background: #3182ce; }
+    button:disabled { background: #a0aec0; cursor: not-allowed; }
+    .result-box { margin-top: 30px; background: #f7fafc; border-radius: 8px; padding: 20px; border: 1px solid #e2e8f0; }
+    .result-box h3 { margin-bottom: 15px; color: #2d3748; }
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .info-item { background: white; padding: 8px 12px; border-radius: 6px; }
+    .info-item strong { color: #4a5568; }
+    .match-score { font-size: 2em; font-weight: bold; color: #2b6cb0; text-align: center; margin: 15px 0; }
+    .details { margin-top: 15px; }
+    .error { color: #e53e3e; font-weight: bold; }
+    .loading { text-align: center; padding: 20px; }
+    .edu-list, .proj-list { margin-top: 12px; }
+    .edu-item, .proj-item { background: white; padding: 10px; border-radius: 6px; margin-bottom: 8px; }
+    .proj-item .tech-tag { display: inline-block; background: #ebf4ff; color: #2b6cb0; padding: 2px 8px; border-radius: 12px; font-size: 0.85em; margin-right: 4px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📄 简历智能解析与岗位匹配</h1>
+
+    <div class="section">
+      <label for="resumeFile">上传简历（PDF）</label>
+      <input type="file" id="resumeFile" accept=".pdf">
+    </div>
+
+    <div class="section">
+      <label for="jobDesc">岗位需求描述（选填，用于匹配评分）</label>
+      <textarea id="jobDesc" placeholder="请输入招聘岗位的要求和描述..."></textarea>
+    </div>
+
+    <button id="submitBtn" onclick="submitForm()">开始解析与匹配</button>
+
+    <div id="result" class="result-box" style="display: none;"></div>
+  </div>
+
+  <script>
+    const API_BASE = 'https://jianli-fczajrnjrh.cn-hangzhou.fcapp.run';
+
+    async function submitForm() {
+      const fileInput = document.getElementById('resumeFile');
+      const jobDesc = document.getElementById('jobDesc').value.trim();
+      const resultDiv = document.getElementById('result');
+      const btn = document.getElementById('submitBtn');
+
+      if (!fileInput.files[0]) {
+        alert('请先选择简历文件');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('file', fileInput.files[0]);
+      if (jobDesc) {
+        formData.append('job_desc', jobDesc);
+        formData.append('use_ai_match', 'false');
+      }
+
+      resultDiv.style.display = 'block';
+      resultDiv.innerHTML = '<div class="loading">⏳ 正在解析中，请稍候...</div>';
+      btn.disabled = true;
+
+      try {
+        const response = await fetch(`${API_BASE}/parse`, {
+          method: 'POST',
+          body: formData
+        });
+        const res = await response.json();
+
+        if (res.code === 200) {
+          renderResult(res.data, res.message);
+        } else {
+          resultDiv.innerHTML = `<div class="error">错误: ${res.message}</div>`;
+        }
+      } catch (err) {
+        resultDiv.innerHTML = `<div class="error">请求失败: ${err.message}</div>`;
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function renderResult(data, message) {
+      const info = data.info || {};
+      const match = data.match;
+      let html = `<h3>✅ ${message}</h3>`;
+
+      // 基本信息
+      html += `<div class="info-grid">
+        <div class="info-item"><strong>姓名:</strong> ${info.name || '未识别'}</div>
+        <div class="info-item"><strong>电话:</strong> ${info.phone || '未识别'}</div>
+        <div class="info-item"><strong>邮箱:</strong> ${info.email || '未识别'}</div>
+        <div class="info-item"><strong>地址:</strong> ${info.address || '未识别'}</div>
+        <div class="info-item"><strong>求职意向:</strong> ${info.job_intention || '无'}</div>
+        <div class="info-item"><strong>期望薪资:</strong> ${info.expected_salary || '无'}</div>
+        <div class="info-item"><strong>工作年限:</strong> ${info.work_years || '无'}</div>
+        <div class="info-item"></div>
+      </div>`;
+
+      // 教育经历（新结构化列表）
+      if (info.educations && info.educations.length > 0) {
+        html += '<h4 style="margin-top:15px;">🎓 教育经历</h4><div class="edu-list">';
+        info.educations.forEach(edu => {
+          html += `<div class="edu-item">
+            <strong>${edu.school || '未知学校'}</strong> | ${edu.major || '未知专业'}
+            <br>学历: ${edu.degree || '-'} | 时间: ${edu.start_date || '-'} ~ ${edu.end_date || '-'}
+          </div>`;
+        });
+        html += '</div>';
+      }
+
+      // 项目经历（新结构化列表）
+      if (info.projects && info.projects.length > 0) {
+        html += '<h4 style="margin-top:15px;">📁 项目经历</h4><div class="proj-list">';
+        info.projects.forEach(proj => {
+          html += `<div class="proj-item">
+            <strong>${proj.name || '未命名项目'}</strong> (${proj.duration || '时间未提供'})
+            <br>${proj.description || ''}
+            <br>`;
+          if (proj.technologies && proj.technologies.length > 0) {
+            proj.technologies.forEach(tech => {
+              html += `<span class="tech-tag">${tech}</span>`;
+            });
+          }
+          html += `</div>`;
+        });
+        html += '</div>';
+      }
+
+      // 匹配评分
+      if (match) {
+        html += `<div class="match-score">综合匹配度: ${match.overall_score}%</div>`;
+        html += `<div class="details">
+          <p>技能匹配率: ${match.skill_match_rate}%</p>
+          <p>经验匹配度: ${match.experience_score}%</p>
+          ${match.reason ? `<p><strong>AI 分析:</strong> ${match.reason}</p>` : ''}
+        </div>`;
+      }
+
+      document.getElementById('result').innerHTML = html;
+    }
+  </script>
+</body>
+</html>
