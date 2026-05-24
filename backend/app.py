@@ -61,7 +61,7 @@ def parse_resume():
     # 2. 匹配度评分
     match_result = None
     if job_desc:
-        if use_ai_match and AI_API_KEY != "your-api-key":
+        if use_ai_match and AI_API_KEY :
             # 尝试 AI 匹配
             match_result = ai_match(resume_text, job_desc)
         if not match_result:
