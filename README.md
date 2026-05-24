@@ -111,13 +111,6 @@ bash
 python app.py
 打开 front/index.html 即可本地测试（需自行解决跨域，或使用 Live Server）。
 
-🔧 常见问题
-现象	原因	解决方法
-后端 /health 返回 404	根路由未定义	确保代码包含 /health 路由，并已部署最新版本
-前端请求 Failed to fetch	CORS 未配置	检查 flask-cors 已安装，app.py 中 CORS(app) 已调用
-AI 提取字段为空	API Key 无效或模型不支持 JSON 模式	检查 AI_API_KEY、AI_MODEL 是否正确，推荐使用 qwen-plus
-Redis 连接失败	地址/密码错误或网络不通	检查白名单、VPC、密码；若无需 Redis 可忽略，系统自动降级
-上传 ZIP 部署报错 FunctionNotStarted	监听端口不一致	确认 FC 监听端口设为 5000
 📄 许可
 本项目仅用于学习与交流，使用通义千问 API 请遵守阿里云相关服务条款。
 简历数据仅用于解析与匹配，不会持久化存储（缓存可配置清除）。
